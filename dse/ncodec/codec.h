@@ -9,8 +9,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <errno.h>
-#include <dse/ncodec/codec/interface/frame.h>
-#include <dse/ncodec/codec/interface/pdu.h>
+#include <dse/ncodec/interface/frame.h>
+#include <dse/ncodec/interface/pdu.h>
 
 
 /* DLL Interface visibility. */
@@ -206,4 +206,5 @@ DLL_PUBLIC int64_t          ncodec_seek(NCODEC* nc, size_t pos, int32_t op);
 DLL_PUBLIC int64_t          ncodec_tell(NCODEC* nc);
 
 #endif  // DSE_NCODEC_CODEC_H_
+
 
