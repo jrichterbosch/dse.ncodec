@@ -120,6 +120,14 @@ int process_config(NCodecPduFlexrayConfig* config, FlexrayEngine* engine)
 int calculate_budget(FlexrayEngine* engine, double step_size)
 {
     if (engine == NULL) return -EINVAL;
+    if (engine->macrotick_ns == 0) {
+        log_error("engine->macrotick_ns not configured");
+        return -EINVAL;
+    }
+    if (engine->macro2micro == 0) {
+        log_error("engine->macro2micro not configured");
+        return -EINVAL;
+    }
 
     if (step_size <= 0.0) {
         if (engine->sim_step_size <= 0.0) {
@@ -144,7 +152,7 @@ static void process_slot(FlexrayEngine* engine)
         return;
     }
 
-    log_trace("Process slot: %u (cycle=%u, mt=%u)", engine->pos_slot,
+    log_debug("Process slot: %u (cycle=%u, mt=%u)", engine->pos_slot,
         engine->pos_cycle, engine->pos_mt);
 
     /* Search for Tx and Rx LPDUs in this slot. */
@@ -202,6 +210,11 @@ static void process_slot(FlexrayEngine* engine)
         if (tx_lpdu->lpdu_config.transmit_mode !=
             NCodecPduFlexrayTransmitModeContinuous) {
             tx_lpdu->lpdu_config.status = NCodecPduFlexrayLpduStatusTransmitted;
+        }
+        if (tx_lpdu->payload == NULL) {
+            log_debug("Process slot: LPDU %04x (len=%u) no payload available",
+                tx_lpdu->lpdu_config.slot_id,
+                tx_lpdu->lpdu_config.payload_length);
         }
         tx_lpdu->cycle = engine->pos_cycle;
         if (tx_lpdu->node_ident.node_id == engine->node_ident.node_id) {

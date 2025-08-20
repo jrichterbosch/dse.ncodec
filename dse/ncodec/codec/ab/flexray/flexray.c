@@ -27,11 +27,15 @@ bool flexray_bus_model_consume(ABCodecBusModel* bm, NCodecPdu* pdu)
         /* Ensure the Config has the node_ident of the PDU. */
         pdu->transport.flexray.metadata.config.node_ident = node_ident;
         process_config(&pdu->transport.flexray.metadata.config, &m->engine);
+        log_debug("Configure %d VCN (nid (%d:%d:%d))",
+            pdu->transport.flexray.metadata.config.vcn_count,
+            node_ident.node.ecu_id, node_ident.node.cc_id,
+            node_ident.node.swc_id);
         for (size_t i = 0;
              i < pdu->transport.flexray.metadata.config.vcn_count &&
              i < MAX_VCN;
              i++) {
-            register_vcs_node_state(
+            register_vcn_node_state(
                 &m->state, pdu->transport.flexray.metadata.config.vcn[i]);
         }
         register_node_state(&m->state, node_ident, true,
@@ -49,14 +53,16 @@ bool flexray_bus_model_consume(ABCodecBusModel* bm, NCodecPdu* pdu)
         // shift_cycle(&m->engine, 0, 0, true); // TODO: FR sync from bridge.
         break;
     case (NCodecPduFlexrayMetadataTypeLpdu):
-        log_debug("FlexRay: Consume: (%u:%u:%u) LPDU %04x (len=%u)",
+        log_debug("FlexRay: Consume: (%u:%u:%u) LPDU %04x (len=%u) status=%d",
             node_ident.node.ecu_id, node_ident.node.cc_id,
-            node_ident.node.swc_id, pdu->id, pdu->payload_len);
+            node_ident.node.swc_id, pdu->id, pdu->payload_len,
+            pdu->transport.flexray.metadata.lpdu.status);
         // TODO: Need also the config index. Currently based on slot_id
         // TODO: but needs to also have config_index, or actually use
         // TODO: config_index for the lookup (rather than slot_id).
         // TODO: *** NOT URGENT ***, Needed for CHA + B support.
-        set_payload(&m->engine, node_ident.node_id, pdu->id, 0, pdu->payload,
+        set_payload(&m->engine, node_ident.node_id, pdu->id,
+            pdu->transport.flexray.metadata.lpdu.status, pdu->payload,
             pdu->payload_len);
         break;
     default:
@@ -67,7 +73,7 @@ bool flexray_bus_model_consume(ABCodecBusModel* bm, NCodecPdu* pdu)
     return true;
 }
 
-void Flexray_bus_model_progress(ABCodecBusModel* bm)
+void flexray_bus_model_progress(ABCodecBusModel* bm)
 {
     FlexrayBusModel*               m = (FlexrayBusModel*)bm->model;
     NCodecPduFlexrayNodeIdentifier node_ident = m->node_ident;
@@ -79,8 +85,13 @@ void Flexray_bus_model_progress(ABCodecBusModel* bm)
         log_debug("FlexRay: Progress: Calculate and Consume slots");
 // TODO: use simulation time from pdu.simulation_time
 #define SIM_STEP_SIZE 0.0005
-        calculate_budget(&m->engine, SIM_STEP_SIZE);
-        for (; consume_slot(&m->engine) == 0;) {
+        int rc = calculate_budget(&m->engine, SIM_STEP_SIZE);
+        if (rc == 0) {
+            for (; consume_slot(&m->engine) == 0;) {
+                // log_error("SLOT %d", m->engine.pos_slot);
+            }
+        } else {
+            log_error("Call to calculate_budget() returned %d", rc);
         }
     }
 
@@ -173,6 +184,6 @@ void flexray_bus_model_create(ABCodecInstance* nc)
 
     /* Configure the Bus Model VTable. */
     nc->reader.bus_model.vtable.consume = flexray_bus_model_consume;
-    nc->reader.bus_model.vtable.progress = Flexray_bus_model_progress;
+    nc->reader.bus_model.vtable.progress = flexray_bus_model_progress;
     nc->reader.bus_model.vtable.close = flexray_bus_model_close;
 }
