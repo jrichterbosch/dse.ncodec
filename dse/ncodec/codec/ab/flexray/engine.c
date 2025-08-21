@@ -281,7 +281,7 @@ int consume_slot(FlexrayEngine* engine)
                         NCodecPduFlexrayLpduStatusNotTransmitted) {
                     /* Pending TX LPDU, calculate transmission MT (round up). */
                     pending_tx = true;
-                    uint mini_slot_count =
+                    unsigned int mini_slot_count =
                         (40 + (lpdu_item->lpdu_config.payload_length * 8) +
                             engine->bits_per_minislot - 1) /
                         engine->bits_per_minislot;
