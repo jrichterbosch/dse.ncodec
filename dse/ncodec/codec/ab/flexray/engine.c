@@ -13,6 +13,10 @@
 #define UNUSED(x) ((void)x)
 #define MAX_CYCLE 64 /* 0.. 63 */
 
+#if defined _WIN32 || defined __CYGWIN__
+#define EBADE 13 /* Set Invalid exchange to ERROR_INVALID_DATA */
+#endif
+
 
 typedef struct VectorSlotMapItem {
     uint32_t slot_id;
